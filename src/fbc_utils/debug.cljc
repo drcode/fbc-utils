@@ -18,7 +18,12 @@
   (str (re-find #"[^/]*$" file) ":" line))
 
 (defmacro mdbg [var]
-  `(dbg ~var '~var ~(format-filename (meta &form))))
+  `(dbg ~var '~var ~#?(:clj  (re-find #"[^/]*$" *file*)
+                       :cljs (format-filename (meta &form)))))
+
+(defmacro ?? [var]
+  `(dbg ~var '~var ~#?(:clj  (re-find #"[^/]*$" *file*)
+                       :cljs (format-filename (meta &form)))))
 
 (def max-label-length 60)
 
@@ -31,12 +36,18 @@
                          s))
               result (try (pr-str val)
                           #?(:cljs (catch js/Error e
-                                e)))]
-          (println (when fname
+                                     e)))]
+          #?(:clj (println (when fname
                      fname)
                    key
                    "="
-                   result)))
+                   result)
+             :cljs (.log js/console
+                         (str #_(when fname
+                                fname)
+                              s
+                              "=")
+                         val))))
    val)
   ([val]
    (dbg val "dbg" nil)))

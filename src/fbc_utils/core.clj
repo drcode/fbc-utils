@@ -7,6 +7,12 @@
 
 (defmacro closed-map
   ([req-keys opt-keys]
-   `(clojure.spec/merge (clojure.spec/keys :req ~(vec req-keys)) (clojure.spec/map-of ~(st/union req-keys opt-keys) any?)))
+   `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req ~(vec req-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys opt-keys) any?)))
   ([req-keys]
    `(closed-map ~req-keys {})))
+
+(defn extract-opts [args]
+  (if (and (seq args) (map? (first args)))
+    [(first args) (rest args)]
+    [{} args]))
+
