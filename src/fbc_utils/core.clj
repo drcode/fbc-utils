@@ -16,3 +16,11 @@
     [(first args) (rest args)]
     [{} args]))
 
+(defmacro for-async [[item items] & body]
+  `(loop [items# ~items
+          acc#   []]
+     (if (seq items#)
+       (recur (rest items#)
+              (conj acc#
+                    (let [~item (first items#)] ~@body)))
+       acc#)))
