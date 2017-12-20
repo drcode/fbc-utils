@@ -8,3 +8,9 @@
           js/console
           (apply array
                  args)))
+
+(defn extract-opts [args]
+  (if (and (seq args) (map? (first args)))
+    [(first args) (rest args)]
+    [{} args]))
+

@@ -11,11 +11,6 @@
   ([req-keys]
    `(closed-map ~req-keys {})))
 
-(defn extract-opts [args]
-  (if (and (seq args) (map? (first args)))
-    [(first args) (rest args)]
-    [{} args]))
-
 (defmacro for-async [[item items] & body]
   `(loop [items# ~items
           acc#   []]
