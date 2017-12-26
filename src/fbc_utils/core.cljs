@@ -14,3 +14,5 @@
     [(first args) (rest args)]
     [{} args]))
 
+(defn date->unix-time [date]
+  (int (/ (.getTime date) 1000)))
