@@ -17,5 +17,6 @@
      (if (seq items#)
        (recur (rest items#)
               (conj acc#
-                    (let [~item (first items#)] ~@body)))
+                    (let [~item (first items#)]
+                      ~@body)))
        acc#)))
