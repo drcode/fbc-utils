@@ -1,5 +1,6 @@
 (ns fbc-utils.core
-  (:require [clojure.spec.alpha :as s]))
+  (:require [clojure.spec.alpha :as s]
+            [clojure.set]))
 
 (defmacro defmethod-group [fname keys & body]
   `(do ~@(for [key keys]
@@ -41,7 +42,7 @@
                (.getTime (js/Date.)))
 
              (defn log [& args]
-               (.apply (.-log js/console)p
+               (.apply (.-log js/console)
                        js/console
                        (apply array
                               args)))))
