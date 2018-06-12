@@ -42,12 +42,18 @@
                    key
                    "="
                    result)
-             :cljs (.log js/console
-                         (str #_(when fname
+             :cljs (if (exists? js/window)
+                     (.log js/console
+                           (str #_(when fname
+                                    fname)
+                                s
+                                "=")
+                           val)
+                     (println (when fname
                                 fname)
-                              s
-                              "=")
-                         val))))
+                              key
+                              "="
+                              result)))))
    val)
   ([val]
    (dbg val "dbg" nil)))
