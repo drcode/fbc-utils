@@ -17,19 +17,14 @@
 (defn format-filename [{:keys [file line]}]
   (str (re-find #"[^/]*$" file) ":" line))
 
-(defmacro mdbg [var]
-  `(dbg ~var '~var ~#?(:clj  (re-find #"[^/]*$" *file*)
-                       :cljs (format-filename (meta &form)))))
-
 (defmacro ?? [var]
-  `(dbg ~var '~var ~#?(:clj  (re-find #"[^/]*$" *file*)
-                       :cljs (format-filename (meta &form)))))
+  `(dbg ~var '~var))
 
 (def max-label-length 60)
 
 (defn dbg
   "Simple debug function useful for getting intermediates in -> piping."
-  ([val s fname]
+  ([val s]
    (try (let [key    (let [s (pr-str s)]
                        (if (> (count s) max-label-length)
                          (str (subs s 0 (- max-label-length 3)) "...")
@@ -37,26 +32,21 @@
               result (try (pr-str val)
                           #?(:cljs (catch js/Error e
                                      e)))]
-          #?(:clj (println (when fname
-                     fname)
-                   key
-                   "="
-                   result)
+          #?(:clj (if (= s val)
+                    (println "###" s "###")
+                    (println key
+                             "="
+                             result))
              :cljs (if (exists? js/window)
-                     (.log js/console
-                           (str #_(when fname
-                                    fname)
-                                s
-                                "=")
-                           val)
-                     (println (when fname
-                                fname)
-                              key
-                              "="
-                              result)))))
+                     (if (= s val)
+                       (.log js/console (str "### " s " ###"))
+                       (.log js/console (str s "=") val))
+                     (if (= s val)
+                       (println "###" s "###")
+                       (println key "=" result))))))
    val)
   ([val]
-   (dbg val "dbg" nil)))
+   (dbg val "dbg")))
 
 (defmacro mdbg-sample [n var]
   `(if (zero? (rand-int ~n))
