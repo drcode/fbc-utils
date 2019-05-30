@@ -66,6 +66,7 @@
    `(closed-map-un ~req-keys {})))
 
 (defmacro for-async [[item items] & body]
+  "Like for, but (1) is eager, allowing it to work in go blocks (2) returns a vector (3) permits multiple body expressions"
   `(loop [items# ~items
           acc#   []]
      (if (seq items#)
