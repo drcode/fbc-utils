@@ -45,6 +45,11 @@
 (def max-int #?(:clj Integer/MAX_VALUE
                 :cljs js/Number.MAX_SAFE_INTEGER))
 
+(defn sign [n]
+  (cond (zero? n) 0
+        (pos? n) 1
+        (neg? n) -1))
+
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
@@ -123,16 +128,35 @@
   ([a b]
    (<= a b)))
 
+(defn bracket
+  "the return value is bracketed between min-val and max-val, closed on both sides"
+  [min-val val max-val]
+  (cond (>= min-val val) min-val
+        (< val max-val)  val
+        :else            max-val))
+
 (defn dissoc-in [coll path]
   (update-in coll (butlast path) dissoc (last path)))
+
+(defn keep-indexed [pred coll]
+  (keep (fn [[index val]]
+          (pred index val))
+        (map-indexed vector coll)))
 
 (defn consv [item coll]
   (vec (cons item coll)))
 
-(defn split-while
+;; removed because same as split-with
+#_(defn split-while
   "Same as [(take-while pred lst) (drop-while pred lst)]"
   [pred lst]
   [(take-while pred lst) (drop-while pred lst)])
+
+(defn looped-forward [length index]
+  (mod (inc index) length))
+
+(defn looped-backward [length index]
+  (mod (+ index length -1) length))
 
 (defn looped-increment [length index direction]
   "Increments the index is direction is 'true' otherwise decrements. Correctly wraps around the ends based on the length parameter"
@@ -143,6 +167,34 @@
 (defn sqr-dist [[x1 y1] [x2 y2]]
   (+ (square (- x1 x2)) (square (- y1 y2))))
 
+(defn rem-exclamation [kw]
+  "Removes a postfixed exclamation mark from a keyword- Useful for situations where ':foo!' is used as a shorthand for 'set :foo'"
+  (keyword (namespace kw) (apply str (butlast (name kw)))))
+
+(defn keyed-by-id [coll]
+  "Takes a collection of items with a :db/id key, and returns the collection as a map against those keys."
+  (into {}
+        (for [{:keys [:db/id] :as item} coll]
+          [id item])))
+
+(defn index-of [coll val]
+  "Returns index of first instance of val in coll"
+  (loop [coll  coll
+         index 0]
+    (when-let [[item & more] (seq coll)]
+      (if (= item val)
+        index
+        (recur more (inc index))))))
+
+(defn partition-pred [pred coll]
+  "Same as [(filter pred coll) (remove pred coll)]"
+  [(filter pred coll) (remove pred coll)])
+
+(defn ord [c]
+  "converts char to ascii code"
+  #?(:cljs (.charCodeAt c 0)
+     :clj  (int c)))
+
 (defn dist [pt-a pt-b]
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
      :clj (Math/sqrt (sqr-dist pt-a pt-b))))
@@ -151,8 +203,11 @@
               (clojure.core/slurp file))
             
             (defn get-tick-count []
-               (System/currentTimeMillis))))
+              (System/currentTimeMillis))))
 
 #?(:cljs (do (defn get-tick-count []
-               (js/performance.now))))
+               (js/performance.now))
+             (defn client-coords [e]
+               (let [br (.getBoundingClientRect (.-currentTarget e))]
+                 [(- (.-clientX (.-nativeEvent e)) (.-x br)) (- (.-clientY (.-nativeEvent e)) (.-y br))]))))
 
