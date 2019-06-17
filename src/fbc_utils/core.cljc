@@ -141,11 +141,6 @@
 (defn dissoc-in [coll path]
   (update-in coll (butlast path) dissoc (last path)))
 
-(defn keep-indexed [pred coll]
-  (keep (fn [[index val]]
-          (pred index val))
-        (map-indexed vector coll)))
-
 (defn consv [item coll]
   (vec (cons item coll)))
 
