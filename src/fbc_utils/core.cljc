@@ -50,6 +50,10 @@
         (pos? n) 1
         (neg? n) -1))
 
+(defn ceil [n]
+  #?(:clj  (int (Math/ceil n))
+     :cljs (js/Math.ceil n)))
+
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
