@@ -50,6 +50,10 @@
         (pos? n) 1
         (neg? n) -1))
 
+(defn ceil [n]
+  #?(:clj  (int (Math/ceil n))
+     :cljs (js/Math.ceil n)))
+
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
@@ -70,7 +74,7 @@
   ([req-keys]
    `(closed-map-un ~req-keys {})))
 
-(defmacro for-async [[item items] & body]
+(defmacro forv [[item items] & body]
   "Like for, but (1) is eager, allowing it to work in go blocks (2) returns a vector (3) permits multiple body expressions"
   `(loop [items# ~items
           acc#   []]
