@@ -14,9 +14,6 @@
                                 `(str '~var "=" (pr-str ~var) " ")))
                 ~@body))
 
-(defn format-filename [{:keys [file line]}]
-  (str (re-find #"[^/]*$" file) ":" line))
-
 (defmacro ?? [var]
   `(dbg ~var '~var))
 
@@ -40,7 +37,7 @@
              :cljs (if (exists? js/window)
                      (if (= s val)
                        (.log js/console (str "### " s " ###"))
-                       (.log js/console (str s "=") val))
+                       (.log js/console (str key "=") val))
                      (if (= s val)
                        (println "###" s "###")
                        (println key "=" result))))))
@@ -48,7 +45,5 @@
   ([val]
    (dbg val "dbg")))
 
-(defmacro mdbg-sample [n var]
-  `(if (zero? (rand-int ~n))
-     (mdbg ~var)
-     ~var))
+(defmacro !! [& body]
+  `(do ~@(butlast body)))
