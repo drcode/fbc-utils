@@ -39,6 +39,10 @@
   #?(:clj (Math/asin x)
      :cljs (js/Math.asin x)))
 
+(defn parse-int [s]
+  #?(:clj  (Integer. s)
+     :cljs (js/parseInt s)))
+
 (defn xor [a b]
   (or (and a (not b)) (and (not a) b)))
 
@@ -144,12 +148,6 @@
 (defn consv [item coll]
   (vec (cons item coll)))
 
-;; removed because same as split-with
-#_(defn split-while
-  "Same as [(take-while pred lst) (drop-while pred lst)]"
-    [pred lst]
-  [(take-while pred lst) (drop-while pred lst)])
-
 (defn looped-forward [length index]
   (mod (inc index) length))
 
@@ -174,6 +172,12 @@
   (into {}
         (for [{:keys [:db/id] :as item} coll]
           [id item])))
+
+(defn push-with-id [db obj]
+  (let [id (if (seq db)
+             (inc (apply max (keys db)))
+             0)]
+    (assoc db id (assoc obj :db/id id))))
 
 (defn index-of [coll val]
   "Returns index of first instance of val in coll"
