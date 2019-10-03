@@ -57,6 +57,11 @@
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
+(defn flip-map [coll]
+  (into {}
+        (for [[k v] coll]
+          [v k])))
+
 (defmacro defmethod-group [fname keys & body]
   `(do ~@(for [key keys]
            `(defmethod ~fname ~key
