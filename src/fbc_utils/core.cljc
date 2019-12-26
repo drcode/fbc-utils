@@ -1,6 +1,8 @@
 (ns fbc-utils.core
   (:require [clojure.spec.alpha :as s]
-            [clojure.set]))
+            [clojure.math.combinatorics :as cb]            
+            [clojure.set]
+            #?(:cljs [cljs.reader :refer [read-string]])))
 
 (def pi 3.14159265)
 
@@ -58,6 +60,10 @@
   #?(:clj  (int (Math/ceil n))
      :cljs (js/Math.ceil n)))
 
+(defn round [n]
+  #?(:cljs (int (js/Math.round n))
+     :clj  (int (Math/round n))))
+
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
@@ -65,6 +71,9 @@
   (into {}
         (for [[k v] coll]
           [v k])))
+
+(defn cartesians [& args]
+  (map vec (apply cb/cartesian-product (map range args))))
 
 (defmacro defmethod-group [fname keys & body]
   `(do ~@(for [key keys]
@@ -193,6 +202,10 @@
         index
         (recur more (inc index))))))
 
+(defn find-first [coll pred]
+  (when-let [[k] (seq (filter pred coll))]
+    k))
+
 (defn partition-pred [pred coll]
   "Same as [(filter pred coll) (remove pred coll)]"
   [(filter pred coll) (remove pred coll)])
@@ -201,6 +214,12 @@
   "converts char to ascii code"
   #?(:cljs (.charCodeAt c 0)
      :clj  (int c)))
+
+(defn throw [s]
+  (throw (ex-info (if (keyword? s)
+                    (name s)
+                    s)
+                  {})))
 
 (defn dist [pt-a pt-b]
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
@@ -218,3 +237,18 @@
                (let [br (.getBoundingClientRect (.-currentTarget e))]
                  [(- (.-clientX (.-nativeEvent e)) (.-x br)) (- (.-clientY (.-nativeEvent e)) (.-y br))]))))
 
+#?(:cljs (do (defonce night-mode-enabled (atom false))
+             (defn devtools-night-mode []
+               (when (and (not @night-mode-enabled) js/devtools.core.get_prefs)
+                 (doseq [[k v] (js/devtools.core.get_prefs)]
+                   (when (and (re-find #"-style" (name k)) v)
+                     (when-let [[_ front r g b back] (re-find #"(^.*rgba\()(\d+),(\d+),(\d+)(,1\).*$)" v)]
+                       (let [fun (fn [k]
+                                   (min 255 (+ k 140)))
+                             rr (fun (read-string r))
+                             gg (fun (read-string g))
+                             bb (fun (read-string b))]
+                         (if (< (+ (read-string r) (read-string g) (read-string b)) 40)
+                           (js/devtools.core.set_pref_BANG_ k (str front 0 "," 0 "," 0 back))
+                           (js/devtools.core.set_pref_BANG_ k (str front rr "," gg "," bb back)))))))
+                 (reset! night-mode-enabled true)))))

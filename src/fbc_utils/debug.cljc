@@ -1,4 +1,5 @@
-(ns fbc-utils.debug)
+(ns fbc-utils.debug
+  #?(:cljs (:require [cljs.reader :refer [read-string]])))
 
 (defmacro loop-dbg [vars & body]
           "prints out the value of all parameters into the loop for debugging purposes."
@@ -34,16 +35,20 @@
                     (println key
                              "="
                              result))
-             :cljs (if (exists? js/window)
-                     (if (= s val)
-                       (.log js/console (str "### " s " ###"))
-                       (.log js/console (str key "=") val))
-                     (if (= s val)
-                       (println "###" s "###")
-                       (println key "=" result))))))
+             :cljs (let [k (exists? js/window)]
+                     (if k
+                       (if (= s val)
+                         (.log js/console (str "### " s " ###"))
+                         (.log js/console (str key "=") val))
+                       (if (= s val)
+                         (println "###" s "###")
+                         (println key "=" result)))))))
    val)
   ([val]
    (dbg val "dbg")))
 
 (defmacro !! [& body]
   `(do ~@(butlast body)))
+
+(defn dbg* [form]
+  `(dbg ~form '~form))
