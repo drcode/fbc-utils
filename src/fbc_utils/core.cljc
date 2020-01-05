@@ -62,7 +62,7 @@
 
 (defn round [n]
   #?(:cljs (int (js/Math.round n))
-     :clj  (int (Math/round n))))
+     :clj  (int (Math/round (float n)))))
 
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
@@ -71,6 +71,14 @@
   (into {}
         (for [[k v] coll]
           [v k])))
+
+(defn multivec
+  ([sizes val]
+   (if-let [[cur & more] (seq sizes)]
+     (vec (repeat cur (multivec more val)))
+     val))
+  ([sizes]
+   (multivec sizes nil)))
 
 (defn cartesians [& args]
   (map vec (apply cb/cartesian-product (map range args))))
@@ -221,6 +229,14 @@
                     s)
                   {})))
 
+(defn lsr-rand
+  "A crude lsr-based rand implementation that is deterministic"
+  ([]
+   0xACE1)
+  ([prev]
+   (let [bit (bit-and (bit-xor prev (bit-shift-right prev 2) (bit-shift-right prev 3) (bit-shift-right prev 5)) 1)]
+     (bit-or (bit-shift-right prev 1) (bit-shift-left bit 15)))))
+
 (defn dist [pt-a pt-b]
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
      :clj (Math/sqrt (sqr-dist pt-a pt-b))))
@@ -239,7 +255,7 @@
 
 #?(:cljs (do (defonce night-mode-enabled (atom false))
              (defn devtools-night-mode []
-               (when (and (not @night-mode-enabled) js/devtools.core.get_prefs)
+               (when (and (not @night-mode-enabled) js/devtools js/devtools.core.get_prefs)
                  (doseq [[k v] (js/devtools.core.get_prefs)]
                    (when (and (re-find #"-style" (name k)) v)
                      (when-let [[_ front r g b back] (re-find #"(^.*rgba\()(\d+),(\d+),(\d+)(,1\).*$)" v)]
