@@ -88,17 +88,17 @@
            `(defmethod ~fname ~key
               ~@body))))
 
-(defmacro closed-map
-  ([req-keys opt-keys]
-   `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req ~(vec req-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys opt-keys) any?)))
-  ([req-keys]
-   `(closed-map ~req-keys #{})))
+#_(defmacro closed-map
+    ([req-keys opt-keys]
+     `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req ~(vec req-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys opt-keys) any?)))
+    ([req-keys]
+     `(closed-map ~req-keys #{})))
 
-(defmacro closed-map-un
-  ([req-keys opt-keys]
-   `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req-un ~(vec req-keys) :opt-un ~(vec opt-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys (set (map (comp keyword name) opt-keys))) any?)))
-  ([req-keys]
-   `(closed-map-un ~req-keys {})))
+#_(defmacro closed-map-un
+    ([req-keys opt-keys]
+     `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req-un ~(vec req-keys) :opt-un ~(vec opt-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys (set (map (comp keyword name) opt-keys))) any?)))
+    ([req-keys]
+     `(closed-map-un ~req-keys {})))
 
 (defmacro forv [[item items] & body]
   `(loop [items# ~items
@@ -137,12 +137,12 @@
 (defn date->unix-time [date]
   (int (/ (.getTime date) 1000)))
 
-(defn validate-atom [spec state-atom]
-  (set-validator! state-atom
-                  (fn [k]
-                    (if (s/valid? spec k)
-                      true
-                      (throw (ex-info (str (s/explain-str spec k) "\n" (pr-str k)) {}))))))
+#_(defn validate-atom [spec state-atom]
+    (set-validator! state-atom
+                    (fn [k]
+                      (if (s/valid? spec k)
+                        true
+                        (throw (ex-info (str (s/explain-str spec k) "\n" (pr-str k)) {}))))))
 
 (defn square [x]
   (* x x))
