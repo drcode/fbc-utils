@@ -1,10 +1,10 @@
-(ns tomo.cupdate-test
+(ns fbc-utils.cupdate-test
   (:require-macros [fbc-utils.debug :refer [??]])
   (:require [cljs.test :refer [deftest is]]
             [fbc-utils.debug :as db]
             [fbc-utils.core :as ut]
-            [tomo.cupdate :as cu :refer [cupdate]]
-            [tomo.test :refer-macros [test]]))
+            [fbc-utils.cupdate :as cu :refer [cupdate]]
+            [fbc-utils.test :refer-macros [test]]))
 
 (test (cupdate {:foo 1} {:foo inc})
       {:foo 2}

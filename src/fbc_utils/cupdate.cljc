@@ -28,6 +28,14 @@
             coll)
           upd))
 
+(defmethod cupdate [:map :coll]
+  [coll upd]
+  (cond (= (count upd) 1) (into {}
+                                (map #(cupdate % (first upd)) coll))
+        (= (count upd) 2) (into {}
+                                (for [[k v] coll]
+                                  [(cupdate k (first upd)) (cupdate v (second upd))]))))
+
 (defmethod cupdate [:coll :map]
   [coll upd]
   (reduce (fn [acc [k v :as item]]
@@ -44,10 +52,9 @@
 
 (defmethod cupdate [:coll :coll]
   [coll upd]
-  (assert (or (= (count coll) (count upd)) (= (count upd) 1)))
-  (cond-> (if (= (count upd) 1)
-            (map #(cupdate % (first upd)) coll)
-            (map cupdate coll upd))
+  (cond-> (cond (= (count upd) 1)            (map #(cupdate % (first upd)) coll)
+                (= (count coll) (count upd)) (map cupdate coll upd)
+                :else                        upd)
     (vector? coll) vec))
 
 (defmethod cupdate [:default :default]
