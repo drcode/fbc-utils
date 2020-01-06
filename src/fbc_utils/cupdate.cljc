@@ -1,5 +1,4 @@
 (ns fbc-utils.cupdate
-  (:require [fbc-utils.debug :refer [??]])
   (:refer-clojure :exclude [type]))
 
 (defn type [k]
