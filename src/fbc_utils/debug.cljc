@@ -24,7 +24,7 @@
 
 (defn dbg
   "Simple debug function useful for getting intermediates in -> piping."
-  ([val arg2]
+  ([val s]
    (try (let [key    (let [s (pr-str s)]
                        (if (> (count s) max-label-length)
                          (str (subs s 0 (- max-label-length 3)) "...")
