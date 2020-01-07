@@ -15,14 +15,16 @@
                                 `(str '~var "=" (pr-str ~var) " ")))
                 ~@body))
 
-(defmacro ?? [var]
-  `(dbg ~var '~var))
+(defmacro ?? [var args]
+  (if-let [[arg] (seq args)]
+    `(dbg (~arg ~var) '~var)
+    `(dbg ~var '~var)))
 
 (def max-label-length 60)
 
 (defn dbg
   "Simple debug function useful for getting intermediates in -> piping."
-  ([val s]
+  ([val arg2]
    (try (let [key    (let [s (pr-str s)]
                        (if (> (count s) max-label-length)
                          (str (subs s 0 (- max-label-length 3)) "...")
