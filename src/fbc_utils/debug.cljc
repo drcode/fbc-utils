@@ -16,7 +16,7 @@
                   `(str '~var "=" (pr-str ~var) " ")))
      ~@body))
 
-(defmacro ?? [var args]
+(defmacro ?? [var & args]
   (if-let [[arg] (seq args)]
     `(dbg (~arg ~var) '~var)
     `(dbg ~var '~var)))
