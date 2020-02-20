@@ -190,16 +190,16 @@
   (keyword (namespace kw) (apply str (butlast (name kw)))))
 
 (defn keyed-by-id [coll]
-  "Takes a collection of items with a :db/id key, and returns the collection as a map against those keys."
+  "Takes a collection of items with a :id key, and returns the collection as a map against those keys."
   (into {}
-        (for [{:keys [:db/id] :as item} coll]
+        (for [{:keys [:id] :as item} coll]
           [id item])))
 
 (defn push-with-id [db obj]
   (let [id (if (seq db)
              (inc (apply max (keys db)))
              0)]
-    (assoc db id (assoc obj :db/id id))))
+    (assoc db id (assoc obj :id id))))
 
 (defn index-of [coll val]
   "Returns index of first instance of val in coll"
@@ -228,6 +228,14 @@
                     (name s)
                     s)
                   {})))
+
+(defn minimal-angle-difference [& args]
+  "For two radian angles, find the minimal angle between them."
+  (let [[ang1 ang2] (sort args)
+        ang         (mod (- ang2 ang1) (* pi 2))]
+    (if (< ang pi)
+      ang
+      (- (* pi 2) ang))))
 
 (defn lsr-rand
   "A crude lsr-based rand implementation that is deterministic"
