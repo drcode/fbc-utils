@@ -29,23 +29,24 @@
        (cljs.test/deftest ~@args)
      (clojure.test/deftest ~@args)))
 
-(defmacro test-helper [& body]
+(defn test-helper [body desc]
   (if-let [[a & more] (seq body)]
-    (let [start (seq (drop-while (fn [k]
-                                   (not= k 'start))
-                                 more))]
-      (cond start                                                       `(test-helper ~@(rest start))
-            (= a 'stop)                                                 nil
-            (= a '-)                                                    `(test-helper ~@(rest (rest more)))
-            (and (coll? a) (seq a) (= (first a) 'clojure.core/unquote)) `(do ~(second a)
-                                                                             (test-helper ~@more)) 
-            (seq more)                                                  `(do (testing '~a (is (= ~(first more) ~a)))
-                                                                             (test-helper ~@(rest more)))
-            :else                                                       `(testing '~a (is (= :no-result ~a)))))))
+    (cond (= a 'stop)                                                 nil
+          (string? a)                                                 (test-helper more a)
+          (and (coll? a) (seq a) (= (first a) 'clojure.core/unquote)) `(do ~(second a)
+                                                                           ~(test-helper more desc)) 
+          (and (seq more) (not= (first more) 'stop))                  `(do (testing '~(or desc a) (is (= ~(first more) ~a)))
+                                                                           ~(test-helper (rest more) nil))
+          :else                                                       `(testing '~(or desc a) (is (= :no-result ~a))))))
 
 (defmacro test [& body]
-  `(deftest ~'tests
-     (test-helper ~@body)))
+  (let [start (seq (drop-while (fn [k]
+                                 (not= k 'start))
+                               body))]
+    `(deftest ~'tests
+       ~(test-helper (or (when start
+                           (rest start))
+                         body) nil))))
 
 (defmacro error-name [& body]
   `(try ~@body

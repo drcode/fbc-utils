@@ -2,6 +2,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.math.combinatorics :as cb]            
             [clojure.set]
+            #?(:clj [clojure.java.io :as io])
             #?(:cljs [cljs.reader :refer [read-string]])))
 
 (def pi 3.14159265)
@@ -195,9 +196,12 @@
         (for [{:keys [:id] :as item} coll]
           [id item])))
 
+(defn key-max [db]
+  (apply max (keys db)))
+
 (defn push-with-id [db obj]
   (let [id (if (seq db)
-             (inc (apply max (keys db)))
+             (inc (key-max db))
              0)]
     (assoc db id (assoc obj :id id))))
 
@@ -245,6 +249,39 @@
    (let [bit (bit-and (bit-xor prev (bit-shift-right prev 2) (bit-shift-right prev 3) (bit-shift-right prev 5)) 1)]
      (bit-or (bit-shift-right prev 1) (bit-shift-left bit 15)))))
 
+(defmacro ^{:private true} assert-args
+  [& pairs]
+  `(do (when-not ~(first pairs)
+         (throw (IllegalArgumentException.
+                  (str (first ~'&form) " requires " ~(second pairs) " in " ~'*ns* ":" (:line (meta ~'&form))))))
+     ~(let [more (nnext pairs)]
+        (when more
+          (list* `assert-args more)))))
+
+(defmacro if-let*
+  "Multiple binding version of if-let"
+  ([bindings then]
+   `(if-let ~bindings ~then nil))
+  ([bindings then else]
+   (assert-args
+     (vector? bindings) "a vector for its binding"
+     (even? (count bindings)) "exactly even forms in binding vector")
+   (if (== 2 (count bindings))
+     `(let [temp# ~(second bindings)]
+        (if temp#
+          (let [~(first bindings) temp#]
+            ~then)
+          ~else))
+     (let [if-let-else (keyword (name (gensym "if_let_else__")))
+           inner (fn inner [bindings]
+                   (if (seq bindings)
+                     `(if-let [~(first bindings) ~(second bindings)]
+                        ~(inner (drop 2 bindings))
+                        ~if-let-else)
+                     then))]
+       `(let [temp# ~(inner bindings)]
+          (if (= temp# ~if-let-else) ~else temp#))))))
+
 (defn dist [pt-a pt-b]
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
      :clj (Math/sqrt (sqr-dist pt-a pt-b))))
@@ -253,7 +290,10 @@
               (clojure.core/slurp file))
             
             (defn get-tick-count []
-              (System/currentTimeMillis))))
+              (System/currentTimeMillis))
+
+            (defn exists [nam]
+              (.exists (io/file nam)))))
 
 #?(:cljs (do (defn get-tick-count []
                (js/performance.now))
