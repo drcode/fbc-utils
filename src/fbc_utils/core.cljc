@@ -89,17 +89,17 @@
            `(defmethod ~fname ~key
               ~@body))))
 
-#_(defmacro closed-map
-    ([req-keys opt-keys]
-     `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req ~(vec req-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys opt-keys) any?)))
-    ([req-keys]
-     `(closed-map ~req-keys #{})))
+(defmacro closed-map
+  ([req-keys opt-keys]
+   `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req ~(vec req-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys opt-keys) any?)))
+  ([req-keys]
+   `(closed-map ~req-keys #{})))
 
-#_(defmacro closed-map-un
-    ([req-keys opt-keys]
-     `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req-un ~(vec req-keys) :opt-un ~(vec opt-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys (set (map (comp keyword name) opt-keys))) any?)))
-    ([req-keys]
-     `(closed-map-un ~req-keys {})))
+(defmacro closed-map-un
+  ([req-keys opt-keys]
+   `(clojure.spec.alpha/merge (clojure.spec.alpha/keys :req-un ~(vec req-keys) :opt-un ~(vec opt-keys)) (clojure.spec.alpha/map-of ~(clojure.set/union req-keys (set (map (comp keyword name) opt-keys))) any?)))
+  ([req-keys]
+   `(closed-map-un ~req-keys {})))
 
 (defmacro forv [[item items] & body]
   `(loop [items# ~items
