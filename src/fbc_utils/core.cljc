@@ -303,7 +303,7 @@
 
 #?(:cljs (do (defonce night-mode-enabled (atom false))
              (defn devtools-night-mode []
-               (when (and (not @night-mode-enabled) js/devtools js/devtools.core.get_prefs)
+               (when (and (not @night-mode-enabled) (get js/window "devtools") js/devtools.core.get_prefs)
                  (doseq [[k v] (js/devtools.core.get_prefs)]
                    (when (and (re-find #"-style" (name k)) v)
                      (when-let [[_ front r g b back] (re-find #"(^.*rgba\()(\d+),(\d+),(\d+)(,1\).*$)" v)]
