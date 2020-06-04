@@ -32,46 +32,50 @@
                                                    "evenly"         {:justify-content :space-evenly}
                                                    "stretch"        {:align-items :stretch}
                                                    "baseline"       {:align-items :baseline}
+                                                   "relative"       {:position :relative}
+                                                   "absolute"       {:position :absolute}
                                                    (if-let [[_ n] (re-matches #"^max([0-9]+)$" item)]
                                                      {:max-width (str n "rem")}
-                                                     (let [[cur & more] item
-                                                           more         (apply str more)
-                                                           rem          (fn [s]
-                                                                          (case s
-                                                                            nil nil
-                                                                            "0" nil
-                                                                            "1" "1rem"
-                                                                            "2" "2rem"
-                                                                            "3" "3rem"
-                                                                            "4" "4rem"
-                                                                            "5" "0.5rem"))]
-                                                       (case (first item)
-                                                         "m" (if (= 1 (count more))
-                                                               {:margin (rem (first more))}
-                                                               (let [[l t r b] more]
-                                                                 (strip-nils {:margin-left   (rem l)
-                                                                              :margin-top    (rem t)
-                                                                              :margin-right  (rem r)
-                                                                              :margin-bottom (rem b)})))
-                                                         "p" (if (= 1 (count more))
-                                                               {:padding (rem (first more))}
-                                                               (let [[l t r b] more]
-                                                                 (strip-nils {:padding-left   (rem l)
-                                                                              :padding-top    (rem t)
-                                                                              :padding-right  (rem r)
-                                                                              :padding-bottom (rem b)})))
-                                                         "b" {:background-color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
-                                                                                  (str "#" more)
-                                                                                  more)}
-                                                         "c" {:color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
-                                                                       (str "#" more)
-                                                                       more)}
-                                                         "o" (let [[_ col wid] (re-matches #"^([a-z]+)([0-9]+)?$" more)]
-                                                               (strip-nils {:box-sizing   :border-box
-                                                                            :border-style :solid
-                                                                            :border-width  wid
-                                                                            :border-color col}))
-                                                         (throw (ex-info (str "Can't parse style clause " item) {})))))))})
+                                                     (if-let [[_ n] (re-matches #"grow([0-9]*)" item)]
+                                                       {:flex-grow n}
+                                                       (let [[cur & more] item
+                                                             more         (apply str more)
+                                                             rem          (fn [s]
+                                                                            (case s
+                                                                              nil nil
+                                                                              "0" nil
+                                                                              "1" "1rem"
+                                                                              "2" "2rem"
+                                                                              "3" "3rem"
+                                                                              "4" "4rem"
+                                                                              "5" "0.5rem"))]
+                                                         (case (first item)
+                                                           "m" (if (= 1 (count more))
+                                                                 {:margin (rem (first more))}
+                                                                 (let [[l t r b] more]
+                                                                   (strip-nils {:margin-left   (rem l)
+                                                                                :margin-top    (rem t)
+                                                                                :margin-right  (rem r)
+                                                                                :margin-bottom (rem b)})))
+                                                           "p" (if (= 1 (count more))
+                                                                 {:padding (rem (first more))}
+                                                                 (let [[l t r b] more]
+                                                                   (strip-nils {:padding-left   (rem l)
+                                                                                :padding-top    (rem t)
+                                                                                :padding-right  (rem r)
+                                                                                :padding-bottom (rem b)})))
+                                                           "b" {:background-color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
+                                                                                    (str "#" more)
+                                                                                    more)}
+                                                           "c" {:color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
+                                                                         (str "#" more)
+                                                                         more)}
+                                                           "o" (let [[_ col wid] (re-matches #"^([a-z]+)([0-9]+)?$" more)]
+                                                                 (strip-nils {:box-sizing   :border-box
+                                                                              :border-style :solid
+                                                                              :border-width  wid
+                                                                              :border-color col}))
+                                                           (throw (ex-info (str "Can't parse style clause " item) {}))))))))})
                                 {:front true
                                  :atts  atts}
                                 (st/split (name flex) #":"))]

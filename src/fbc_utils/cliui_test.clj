@@ -14,5 +14,5 @@
             :args     [{:label :noargs
                         :snek  []}]}}
       (annotated-strings ["foo" {:text "bar" :derp 42} "baz" {:text "qux" :zup 77}])
-      {:strings ["foo" "bar" "baz" "qux"]
+      {:strings ["foo" "1. bar" "baz" "2. qux"]
        :indexes [{:derp 42} {:zup 77}]})

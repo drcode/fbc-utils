@@ -3,7 +3,8 @@
             [clojure.math.combinatorics :as cb]            
             [clojure.set]
             #?(:clj [clojure.java.io :as io])
-            #?(:cljs [cljs.reader :refer [read-string]])))
+            #?(:clj [clojure.edn :as ed])
+            #?(:cljs [cljs.reader :as rd])))
 
 (def pi 3.14159265)
 
@@ -286,22 +287,21 @@
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
      :clj (Math/sqrt (sqr-dist pt-a pt-b))))
 
-#?(:clj (do (defmacro static-slurp [file]
+#?(:clj (do (def read-string ed/read-string)
+            (defmacro static-slurp [file]
               (clojure.core/slurp file))
-            
             (defn get-tick-count []
               (System/currentTimeMillis))
-
             (defn exists [nam]
               (.exists (io/file nam)))))
 
 #?(:cljs (do (defn get-tick-count []
                (js/performance.now))
+             (def read-string rd/read-string)
              (defn client-coords [e]
                (let [br (.getBoundingClientRect (.-currentTarget e))]
-                 [(- (.-clientX (.-nativeEvent e)) (.-x br)) (- (.-clientY (.-nativeEvent e)) (.-y br))]))))
-
-#?(:cljs (do (defonce night-mode-enabled (atom false))
+                 [(- (.-clientX (.-nativeEvent e)) (.-x br)) (- (.-clientY (.-nativeEvent e)) (.-y br))]))
+             (defonce night-mode-enabled (atom false))
              (defn devtools-night-mode []
                (when (and (not @night-mode-enabled) (get js/window "devtools") js/devtools.core.get_prefs)
                  (doseq [[k v] (js/devtools.core.get_prefs)]
