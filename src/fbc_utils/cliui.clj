@@ -37,6 +37,8 @@
 (defmethod parse-core :default
   [cmd arg-label args])
 
+;; (parse-core :help :noargs [])
+
 (defmulti action-core
   (fn [_ cmd param]
     cmd))
@@ -74,12 +76,17 @@
   (pp/pprint state)
   env)
 
-(defmethod-group action-core [:quit :nop]
+(defmethod action-core :quit
+  [env cmd param]
+  env)
+
+(defmethod action-core :nop
   [env cmd param]
   env)
 
 (defmethod action-core :default
-  [env cmd param])
+  [env cmd param]
+  env)
 
 (defsnek command-snek nil indexes-snek "" -> [:_ nil])
 (defn parse-input [commands parse-fun indexes s]
@@ -133,6 +140,11 @@
            :indexes []}
           coll))
 
+(defn dups [seq]
+  (for [[id freq] (frequencies seq)
+        :when (> freq 1)]
+    id))
+
 (defsnek [{:desc ""}] -> command-snek)
 (defn massage-commands [commands]
   (let [parsed (for [{:keys [desc]
@@ -142,8 +154,8 @@
                         (ut/forv [[k v] (dissoc command :desc)]
                                  {:label k
                                   :snek  v})))]
-    (if (not= (count (distinct (map :shortcut parsed))) (count parsed))
-      (ut/throw "overlap in command shortcuts!")
+    (if-let [[k] (seq (dups (map :shortcut parsed)))]
+      (ut/throw (str "command shortcut " k " is duplicated"))
       (reduce (fn [acc
                    {:keys [shortcut]
                     :as   item}]
@@ -165,7 +177,7 @@
   (let [{:keys [indexes]
          :as   rendering}              (render state)
         [cmd param :as action-literal] (parse-input commands parse-fun indexes s)]
-    (when (and @alternate-commands (not= cmd :nop))
+    (when (and @alternate-commands (not (#{:help :dump :quit :nop} cmd)))
       (reset! alternate-commands nil))
     (let [new-state         (if (action-core {:state    state
                                               :commands commands}
