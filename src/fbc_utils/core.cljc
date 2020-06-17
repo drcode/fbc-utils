@@ -1,4 +1,5 @@
 (ns fbc-utils.core
+  #?(:clj (:refer-clojure :rename {read-string core-read-string}))
   (:require [clojure.spec.alpha :as s]
             [clojure.math.combinatorics :as cb]            
             [clojure.set]
@@ -303,7 +304,7 @@
                  [(- (.-clientX (.-nativeEvent e)) (.-x br)) (- (.-clientY (.-nativeEvent e)) (.-y br))]))
              (defonce night-mode-enabled (atom false))
              (defn devtools-night-mode []
-               (when (and (not @night-mode-enabled) (aget js/window "devtools") js/devtools.core.get_prefs)
+               (when (and (not @night-mode-enabled) (get js/window "devtools") js/devtools.core.get_prefs)
                  (doseq [[k v] (js/devtools.core.get_prefs)]
                    (when (and (re-find #"-style" (name k)) v)
                      (when-let [[_ front r g b back] (re-find #"(^.*rgba\()(\d+),(\d+),(\d+)(,1\).*$)" v)]
