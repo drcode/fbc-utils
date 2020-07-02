@@ -37,8 +37,6 @@
 (defmethod parse-core :default
   [cmd arg-label args])
 
-;; (parse-core :help :noargs [])
-
 (defmulti action-core
   (fn [_ cmd param]
     cmd))
@@ -173,7 +171,7 @@
 
 (def alternate-commands (atom nil))
 
-(defn command-helper [render commands action-fun parse-fun s state]
+(defn command-helper [render commands action-fun parse-fun s state auto-command]
   (let [{:keys [indexes]
          :as   rendering}              (render state)
         [cmd param :as action-literal] (parse-input commands parse-fun indexes s)]
@@ -184,15 +182,21 @@
                                              cmd
                                              param)
                               state
-                              (action-fun state cmd param))
-          {:keys [strings
-                  indexes]
-           :as   rendering} (render new-state)]
-      (mapv println strings)
+                              (action-fun state cmd param))]
       (if (= state new-state)
         (println "##NO ACTION##")
         (spit "actions.edn" (str (pr-str action-literal) "\n") :append true))
-      [cmd new-state])))
+      (let [{:keys [strings
+                    indexes]
+             :as   rendering} (render new-state)]
+        (mapv println strings))
+      (if auto-command
+        (let [action-literal (parse-fun auto-command nil nil)
+              new-new-state  (apply action-fun new-state action-literal)]
+          (when-not (= new-state new-new-state)
+            (spit "actions.edn" (str (pr-str action-literal) "\n") :append true))
+          [cmd new-new-state])
+        [cmd new-state]))))
 
 (defn temp-commands [commands]
   (reset! alternate-commands (massage-commands (concat core-commands commands))))
@@ -208,13 +212,14 @@
                            commands
                            parse
                            action
-                           render]
+                           render
+                           auto-command]
                     :as   args}]
   (reset! alternate-commands nil)
   (swap! state recover-state action)
   (let [commands (massage-commands (concat core-commands commands))]
     (fn [s]
-      (let [[cmd state-new] (command-helper render (or @alternate-commands commands) action parse s @state)]
+      (let [[cmd state-new] (command-helper render (or @alternate-commands commands) action parse s @state auto-command)]
         (when @alternate-commands
           (print-commands @alternate-commands))
         (reset! state state-new)
