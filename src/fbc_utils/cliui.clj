@@ -86,7 +86,7 @@
 
 (defmethod action-core :default
   [env cmd param]
-  env)
+  nil)
 
 (defsnek command-snek nil indexes-snek "" -> [:_ nil])
 (defn parse-input [commands parse-fun indexes s]
