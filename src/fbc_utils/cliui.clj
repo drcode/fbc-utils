@@ -108,7 +108,7 @@
                                      snek
                                      (butlast g))]))
                      args)]
-      (or (apply parse-core cmd k) (apply parse-fun cmd k))
+      (or (apply parse-core cmd k) (apply parse-fun cmd k) [:nop nil])
       [:nop nil])))
 
 (defsnek "" -> {:desc "" :shortcut "" :cmd :_})
