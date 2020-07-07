@@ -171,6 +171,12 @@
 
 (def alternate-commands (atom nil))
 
+(def ^:dynamic inside-repl false)
+
+(defn repl-println [& args]
+  (when inside-repl
+    (apply println args)))
+
 (defn command-helper [render commands action-fun parse-fun s state auto-command]
   (let [{:keys [indexes]
          :as   rendering}              (render state)
@@ -206,7 +212,10 @@
             (reset! alternate-commands nil)
             (action-fun acc cmd param))
           state
-          (map read-string (remove #{""} (historical-actions)))))
+          (map read-string
+               (remove (fn [s]
+                         (or (= s "") (re-matches #"#_.+" s)))
+                       (historical-actions)))))
 
 (defn command-fun [{:keys [state
                            commands
@@ -226,13 +235,14 @@
         cmd))))
 
 (defn repl [command]
-  (command "h")
-  (loop []
-    (print "> ")
-    (flush)
-    (let [cmd (command (read-line))]
-      (when-not (= cmd :quit)
-        (recur)))))
+  (binding [inside-repl true]
+    (command "h")
+    (loop []
+      (print "> ")
+      (flush)
+      (let [cmd (command (read-line))]
+        (when-not (= cmd :quit)
+          (recur))))))
 
 (defn user-command [command]
   (binding [*ns* (create-ns 'user)]
