@@ -16,17 +16,17 @@
 
 (defsnek)
 
-(defsnek -> [""])
-(defn historical-actions []
+(defsnek 0 -> [""])
+(defn historical-actions [backsteps]
   (if (ut/exists "actions.edn")
-    (st/split (slurp "actions.edn") #"\n")
+    (reverse (drop backsteps (reverse (st/split (slurp "actions.edn") #"\n"))))
     []))
 
 (defmulti parse-core
   (fn [cmd arg-label args]
     [cmd arg-label]))
 
-(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil]]
+(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil] [:meta nil]]
   [cmd arg-label args]
   [cmd nil])
 
@@ -71,7 +71,7 @@
     :as   env}
    cmd
    param]
-  (pp/pprint state)
+  (pp/pprint @state)
   env)
 
 (defmethod action-core :quit
@@ -86,30 +86,74 @@
   [env cmd param]
   nil)
 
+(def meta-state (atom nil))
+(def starting-state (atom nil))
+
+(defmethod action-core :meta
+  [env cmd param]
+  (reset! meta-state 0)
+  env)
+
+(declare recover-state)
+
+(defmethod action-core :meta-up
+  [{:keys [starting-state
+           action-fun
+           state]
+    :as   env}
+   cmd
+   param]
+  (swap! meta-state inc)
+  (reset! state (recover-state starting-state action-fun @meta-state))
+  env)
+
+(defmethod action-core :meta-down
+  [{:keys [starting-state
+           action-fun
+           state]
+    :as   env}
+   cmd
+   param]
+  [env cmd param]
+  (swap! meta-state dec)
+  (reset! state (recover-state starting-state action-fun @meta-state))
+  env)
+
+(defmethod action-core :meta-save
+  [env cmd param]
+  (spit "actions.edn" (str (apply str (interpose "\n" (historical-actions @meta-state))) "\n"))
+  (reset! meta-state nil)
+  env)
+
 (defsnek command-snek nil indexes-snek "" -> [:_ nil])
 (defn parse-input [commands parse-fun indexes s]
   (let [[_ cmd param] (re-matches #"([a-z]+)( +.+)?$" s)
         {:keys [cmd
                 args]
          :as   command} (commands cmd)]
-    (if-let [k (some (fn [{:keys [label
-                                  snek]
-                           :as   arg}]
-                       (when-let [g (sn/parse (conj (ut/forv [arg snek]
-                                                             (if (= arg ::ui-index)
-                                                               0
-                                                               arg))
-                                                    :__end)
-                                              (str param " :__end"))]
-                         [label (map (fn [arg val]
-                                       (if (= arg ::ui-index)
-                                         (indexes (dec val))
-                                         val))
-                                     snek
-                                     (butlast g))]))
-                     args)]
-      (or (apply parse-core cmd k) (apply parse-fun cmd k) [:nop nil])
-      [:nop nil])))
+    (if @meta-state
+      [({"u" :meta-up
+         "d" :meta-down
+         "s" :meta-save} s)
+       nil]
+      (if-let [k (some (fn [{:keys [label
+                                    snek]
+                             :as   arg}]
+                         (when-let [g (sn/parse (conj (ut/forv [arg snek]
+                                                               (if (= arg ::ui-index)
+                                                                 0
+                                                                 arg))
+                                                      :__end)
+                                                (str param " :__end"))]
+                           [label (map (fn [arg val]
+                                         (if (= arg ::ui-index)
+                                           (indexes (dec val))
+                                           val))
+                                       snek
+                                       (butlast g))]))
+                       args)]
+        (or (apply parse-core cmd k) (apply parse-fun cmd k) [:nop nil])
+        [:nop nil]))))
 
 (defsnek "" -> {:desc "" :shortcut "" :cmd :_})
 (defn parse-command [desc]
@@ -167,7 +211,9 @@
                     {:desc "[d][u]mp"
                      nil   []}
                     {:desc   "[q]uit"
-                     :noargs []}])
+                     :noargs []}
+                    {:desc   "[m]eta"
+                     nil     []}])
 
 (def alternate-commands (atom nil))
 
@@ -177,25 +223,34 @@
   (when inside-repl
     (apply println args)))
 
-(defn command-helper [render commands action-fun parse-fun s state auto-command]
+(defn command-helper [render commands action-fun parse-fun s state auto-command starting-state]
   (let [{:keys [indexes]
-         :as   rendering}              (render state)
+         :as   rendering}              (render @state)
         [cmd param :as action-literal] (parse-input commands parse-fun indexes s)]
-    (when (and @alternate-commands (not (#{:help :dump :quit :nop} cmd)))
+    (when (and @alternate-commands (not (#{:help :dump :quit :nop :meta :meta-up :meta-down :meta-save} cmd)))
       (reset! alternate-commands nil))
-    (let [new-state         (if (action-core {:state    state
-                                              :commands commands}
-                                             cmd
-                                             param)
-                              state
-                              (action-fun state cmd param))]
-      (if (= state new-state)
+    (let [new-state (if (action-core {:state          state
+                                      :action-fun     action-fun
+                                      :starting-state starting-state
+                                      :commands       commands}
+                                     cmd
+                                     param)
+                      @state
+                      (action-fun @state cmd param))]
+      (if (= @state new-state)
         (println "##NO ACTION##")
         (spit "actions.edn" (str (pr-str action-literal) "\n") :append true))
       (let [{:keys [strings
                     indexes]
              :as   rendering} (render new-state)]
         (mapv println strings))
+      (when @meta-state
+        (mapv println (reverse (take 10 (map-indexed (fn [index item]
+                                                       (str item
+                                                            (when (= index @meta-state)
+                                                              " *")))
+                                                     (reverse (historical-actions 0))))))
+        (println "[u]p\n[d]own\n[s]ave"))
       (if auto-command
         (let [action-literal (parse-fun auto-command nil nil)
               new-new-state  (apply action-fun new-state action-literal)]
@@ -207,7 +262,7 @@
 (defn temp-commands [commands]
   (reset! alternate-commands (massage-commands (concat core-commands commands))))
 
-(defn recover-state [state action-fun]
+(defn recover-state [state action-fun backsteps]
   (reduce (fn [acc [cmd param :as item]]
             (reset! alternate-commands nil)
             (action-fun acc cmd param))
@@ -215,7 +270,7 @@
           (map read-string
                (remove (fn [s]
                          (or (= s "") (re-matches #"#_.+" s)))
-                       (historical-actions)))))
+                       (historical-actions backsteps)))))
 
 (defn command-fun [{:keys [state
                            commands
@@ -225,10 +280,12 @@
                            auto-command]
                     :as   args}]
   (reset! alternate-commands nil)
-  (swap! state recover-state action)
+  (reset! meta-state nil)
+  (reset! starting-state @state)
+  (swap! state recover-state action 0)
   (let [commands (massage-commands (concat core-commands commands))]
     (fn [s]
-      (let [[cmd state-new] (command-helper render (or @alternate-commands commands) action parse s @state auto-command)]
+      (let [[cmd state-new] (command-helper render (or @alternate-commands commands) action parse s state auto-command @starting-state)]
         (when @alternate-commands
           (print-commands @alternate-commands))
         (reset! state state-new)

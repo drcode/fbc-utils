@@ -67,6 +67,8 @@
                                                            "b" {:background-color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
                                                                                     (str "#" more)
                                                                                     more)}
+                                                           "i" {:background-image (when-let [[_ nam ext] (re-matches #"^([0-9a-z_-]+)-(png|jpg|gif)$" more)]
+                                                                                    (str "url('" nam "." ext "')"))}
                                                            "c" {:color (if (re-matches #"^[0-9a-f][0-9a-f][0-9a-f]$" more)
                                                                          (str "#" more)
                                                                          more)}
