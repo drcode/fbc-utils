@@ -251,7 +251,7 @@
                                                               " *")))
                                                      (reverse (historical-actions 0))))))
         (println "[u]p\n[d]own\n[s]ave"))
-      (if auto-command
+      (if (and auto-command (not @meta-state))
         (let [action-literal (parse-fun auto-command nil nil)
               new-new-state  (apply action-fun new-state action-literal)]
           (when-not (= new-state new-new-state)
