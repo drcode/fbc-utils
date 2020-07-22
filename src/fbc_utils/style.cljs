@@ -80,7 +80,8 @@
                                                            (throw (ex-info (str "Can't parse style clause " item) {}))))))))})
                                 {:front true
                                  :atts  atts}
-                                (st/split (name flex) #":"))]
+                                (when flex
+                                  (st/split (name flex) #":")))]
      (cond-> atts
        (seq (select-keys atts [:flex-direction :flex-wrap :justify-content :align-items])) (assoc :display :flex))))
   ([flex]

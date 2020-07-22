@@ -26,7 +26,7 @@
   (fn [cmd arg-label args]
     [cmd arg-label]))
 
-(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil] [:meta nil]]
+(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil] [:meta nil] [:undo nil]]
   [cmd arg-label args]
   [cmd nil])
 
@@ -92,6 +92,17 @@
 (defmethod action-core :meta
   [env cmd param]
   (reset! meta-state 0)
+  env)
+
+(defmethod action-core :undo
+  [{:keys [starting-state
+           action-fun
+           state]
+    :as   env}
+   cmd
+   param]
+  (reset! state (recover-state starting-state action-fun 1))
+  (spit "actions.edn" (str (apply str (interpose "\n" (historical-actions 1))) "\n"))
   env)
 
 (declare recover-state)
@@ -213,6 +224,8 @@
                     {:desc   "[q]uit"
                      :noargs []}
                     {:desc   "[m]eta"
+                     nil     []}
+                    {:desc   "[un]do"
                      nil     []}])
 
 (def alternate-commands (atom nil))
