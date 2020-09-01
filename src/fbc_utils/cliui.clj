@@ -26,7 +26,7 @@
   (fn [cmd arg-label args]
     [cmd arg-label]))
 
-(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil] [:meta nil] [:undo nil]]
+(defmethod-group parse-core [[:help :noargs] [:quit :noargs] [:dump nil] [:meta nil] [:undo nil] [:reset nil]]
   [cmd arg-label args]
   [cmd nil])
 
@@ -94,6 +94,8 @@
   (reset! meta-state 0)
   env)
 
+(declare recover-state)
+
 (defmethod action-core :undo
   [{:keys [starting-state
            action-fun
@@ -104,8 +106,6 @@
   (reset! state (recover-state starting-state action-fun 1))
   (spit "actions.edn" (str (apply str (interpose "\n" (historical-actions 1))) "\n"))
   env)
-
-(declare recover-state)
 
 (defmethod action-core :meta-up
   [{:keys [starting-state
@@ -134,6 +134,17 @@
   [env cmd param]
   (spit "actions.edn" (str (apply str (interpose "\n" (historical-actions @meta-state))) "\n"))
   (reset! meta-state nil)
+  env)
+
+(defmethod action-core :reset
+  [{:keys [starting-state
+           action-fun
+           state]
+    :as   env}
+   cmd
+   param]
+  (spit "actions.edn" "")
+  (reset! state (recover-state starting-state nil 0))
   env)
 
 (defsnek command-snek nil indexes-snek "" -> [:_ nil])
@@ -224,6 +235,8 @@
                     {:desc   "[q]uit"
                      :noargs []}
                     {:desc   "[m]eta"
+                     nil     []}
+                    {:desc   "[reset]"
                      nil     []}
                     {:desc   "[un]do"
                      nil     []}])
