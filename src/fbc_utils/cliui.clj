@@ -49,20 +49,22 @@
                          (st/replace arg #"\[|\]" ""))))
               (map :desc (vals commands)))))
 
+(declare page-println)
+
 (defmethod action-core :help
   [{:keys [commands] :as env} cmd param]
   (if param
     (let [{:keys [args
                   desc]} (commands (name param))]
-      (println desc)
+      (page-println desc)
       (doseq [{:keys [label
                       snek]
                :as   arg}
               (:args (commands (name param)))]
-        (println (apply str
-                        (when label
-                          (str (name label) ": "))
-                        (interpose " " (map pr-str snek))))))
+        (page-println (apply str
+                             (when label
+                               (str (name label) ": "))
+                             (interpose " " (map pr-str snek))))))
     (print-commands commands))
   env)
 
@@ -249,6 +251,18 @@
   (when inside-repl
     (apply println args)))
 
+(def page-lines (atom 0))
+
+(def lines-per-page 30)
+
+(defn page-println [& args]
+  (when inside-repl
+    (when (= @page-lines lines-per-page)
+      (println "...")
+      (read-line))
+    (swap! page-lines inc))
+  (apply println args))
+
 (defn command-helper [render commands action-fun parse-fun s state auto-command starting-state]
   (let [{:keys [indexes]
          :as   rendering}              (render @state)
@@ -266,6 +280,8 @@
       (if (= @state new-state)
         (println "##NO ACTION##")
         (spit "actions.edn" (str (pr-str action-literal) "\n") :append true))
+      (when inside-repl
+        (read-line))
       (let [{:keys [strings
                     indexes]
              :as   rendering} (render new-state)]
@@ -324,6 +340,7 @@
       (print "> ")
       (flush)
       (let [cmd (command (read-line))]
+        (reset! page-lines 0)
         (when-not (= cmd :quit)
           (recur))))))
 
