@@ -279,7 +279,8 @@
                       (action-fun @state cmd param))]
       (if (= @state new-state)
         (println "##NO ACTION##")
-        (spit "actions.edn" (str (pr-str action-literal) "\n") :append true))
+        (do (println "OK")
+            (spit "actions.edn" (str (pr-str action-literal) "\n") :append true)))
       (when inside-repl
         (read-line))
       (let [{:keys [strings
