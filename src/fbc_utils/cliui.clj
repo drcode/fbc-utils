@@ -276,7 +276,7 @@
                                      cmd
                                      param)
                       @state
-                      (action-fun @state cmd param))]
+                      (action-fun @state cmd (assoc param :hot true)))]
       (if (= @state new-state)
         (println "##NO ACTION##")
         (do (println "OK")
@@ -308,7 +308,11 @@
 (defn recover-state [state action-fun backsteps]
   (reduce (fn [acc [cmd param :as item]]
             (reset! alternate-commands nil)
-            (action-fun acc cmd param))
+            (action-fun acc
+                        cmd
+                        (assoc param
+                               :hot
+                               false)))
           state
           (map read-string
                (remove (fn [s]

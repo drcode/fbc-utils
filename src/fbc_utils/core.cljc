@@ -5,6 +5,7 @@
             [clojure.set]
             #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.edn :as ed])
+            #?(:clj [clojure.java.shell :as sh])
             #?(:cljs [cljs.reader :as rd])))
 
 (def pi 3.14159265)
