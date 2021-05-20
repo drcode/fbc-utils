@@ -55,46 +55,51 @@
             args)
      (dbg (do ~@body) '~'result)))
 
-(defmacro ?? [var & args]
-  (if-let [[arg] (seq args)]
-    `(dbg (~arg ~var) '~var)
-    `(dbg ~var '~var)))
+(defmacro ?? [var]
+  `(dbg ~var '~var))
 
 (def max-label-length 60)
 (def max-raw-val-length 1000)
 
 (def ^:dynamic dbg-enabled true)
 
-(defn dbg
-"Simple debug function useful for getting intermediates in -> piping."
-([val s]
- (when dbg-enabled
-   (try (let [key    (let [s (pr-str s)]
-                       (if (> (count s) max-label-length)
-                         (str (subs s 0 (- max-label-length 3)) "...")
-                         s))
-              result (try (pr-str val)
-                          #?(:cljs (catch js/Error e
-                                     e)))]
-          #?(:clj (if (= s val)
-                    (println "###" s "###")
-                    (if (> (count result) max-raw-val-length)
-                      (do (println key "=")
-                          (pprint val))
-                      (println key
-                               "="
-                               result)))
-             :cljs (let [k (exists? js/window)]
-                     (if k
-                       (if (= s val)
-                         (.log js/console (str "### " s " ###"))
-                         (.log js/console (str key "=") val))
-                       (if (= s val)
-                         (println "###" s "###")
-                         (println key "=" result))))))))
- val)
-([val]
- (dbg val "dbg")))
+(defn dbg-key [s]
+  (when dbg-enabled
+    (try (let [key (let [s (pr-str s)]
+                     (if (> (count s) max-label-length)
+                       (str (subs s 0 (- max-label-length 3)) "...")
+                       s))]
+           #?(:clj (if (keyword? s)
+                     (println "###" s "###")
+                     (println key "="))
+              :cljs (let [k (exists? js/window)]
+                      (if k
+                        (if (keyword? s)
+                          (.log js/console (str "### " s " ###"))
+                          (.log js/console (str key "=")))
+                        (if (keyword? s)
+                          (println "###" s "###")
+                          (println key "="))))))))
+  val)
+
+;; Simple debug function useful for getting intermediates in -> piping.
+(defn dbg-val [val]
+  (when dbg-enabled
+    (try (let [result (pr-str val)]
+           #?(:clj (if (> (count result) max-raw-val-length)
+                     (pprint val)
+                     (println result))
+              :cljs (let [k (exists? js/window)]
+                      (if k
+                        (.log js/console val)
+                        (println result)))))))
+  val)
+
+(defmacro dbg [exp s]
+  `(do (let [s# ~s]
+         (dbg-key s#)
+         (when-not (keyword? s#)
+           (dbg-val ~exp s#)))))
 
 (defmacro dbg-switch [condition & body]
   `(binding [dbg-enabled (and dbg-enabled ~condition)]
