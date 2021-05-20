@@ -1,6 +1,6 @@
 (ns fbc-utils.test
-  (:require #?(:clj  [clojure.test]
-               :cljs [cljs.test :include-macros true]))
+  #?(:clj  (:require [clojure.test] [clojure.string :as st])
+     :cljs (:require [cljs.test :include-macros true]))
   (:refer-clojure :exclude [test]))
 
 (defn- cljs-env?
@@ -47,6 +47,51 @@
        ~(test-helper (or (when start
                            (rest start))
                          body) nil))))
+
+;; (defmacro test-file [& body]
+;;   (let [start (seq (drop-while (fn [k]
+;;                                  (not= k 'start))
+;;                                body))]
+;;     `(deftest ~'tests
+;;        (spit "test_output.edn" "loading...")
+;;        (let [err# (atom nil)]
+;;          (do (spit "test_output.edn" (with-out-str (try ~(test-helper (or (when start
+;;                                                                             (rest start))
+;;                                                                           body) nil)
+;;                                                         (catch Exception e#
+;;                                                           (reset! err# e#)
+;;                                                           nil))))
+;;              (when @err#
+;;                (throw @err#)))))))
+
+(def abort-id "sadiiiiiew53")
+
+(def was-aborted (atom nil))
+
+(defn abort-output []
+  (println abort-id)
+  (reset! was-aborted true))
+
+(defmacro test-file [& body]
+  (let [start (seq (drop-while (fn [k]
+                                 (not= k 'start))
+                               body))]
+    `(deftest ~'tests
+       (spit "test_output.edn" "loading...")
+       (reset! was-aborted false)
+       (let [err# (atom nil)
+             s#    (with-out-str (try ~(test-helper (or (when start
+                                                          (rest start))
+                                                        body)
+                                                    nil)
+                                      (catch Exception e#
+                                        (reset! err# e#))))]
+         (spit "test_output.edn"
+               (if @was-aborted
+                 (first (st/split s# (re-pattern abort-id)))
+                 s#))
+         (when @err#
+           (throw @err#))))))
 
 (defmacro error-name [& body]
   `(try ~@body

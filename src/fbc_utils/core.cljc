@@ -2,7 +2,7 @@
   #?(:clj (:refer-clojure :rename {read-string core-read-string}))
   (:require [clojure.spec.alpha :as s]
             [clojure.math.combinatorics :as cb]            
-            [clojure.set]
+            [clojure.set :as se]
             #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.edn :as ed])
             #?(:clj [clojure.java.shell :as sh])
@@ -236,6 +236,12 @@
                     s)
                   {})))
 
+(defmacro catch-to-debug [& body]
+  `(try ~@body
+        (catch Exception e#
+          (fbc-utils.debug/dbg (.getMessage e#) "exception")
+          (.getMessage e#))))
+
 (defn minimal-angle-difference [& args]
   "For two radian angles, find the minimal angle between them."
   (let [[ang1 ang2] (sort args)
@@ -288,6 +294,48 @@
 (defn dist [pt-a pt-b]
   #?(:cljs (js/Math.sqrt (sqr-dist pt-a pt-b))
      :clj (Math/sqrt (sqr-dist pt-a pt-b))))
+
+
+(defn interleave-all
+  "Returns a lazy seq of the first item in each coll, then the second, etc.
+  Unlike `clojure.core/interleave`, the returned seq contains all items in the
+  supplied collections, even if the collections are different sizes."
+  {:arglists '([& colls])}
+  ([] ())
+  ([c1] (lazy-seq c1))
+  ([c1 c2]
+   (lazy-seq
+    (let [s1 (seq c1), s2 (seq c2)]
+      (if (and s1 s2)
+        (cons (first s1) (cons (first s2) (interleave-all (rest s1) (rest s2))))
+        (or s1 s2)))))
+  ([c1 c2 & colls]
+   (lazy-seq
+    (let [ss (remove nil? (map seq (conj colls c2 c1)))]
+      (if (seq ss)
+        (concat (map first ss) (apply interleave-all (map rest ss))))))))
+
+
+(defn furthest-away [start end]
+  (when (not= start end)
+    (let [mid (bit-shift-right (+ start end) 1)]
+      (cons mid (interleave-all (furthest-away start mid) (furthest-away (inc mid) end))))))
+
+;;(take 10 (furthest-away 1 1000))
+
+(def distinguishable-colors
+  ((fn fun [visited level]
+     (let [vals      (conj (vec (range 0 256 (bit-shift-right 256 level))) 255)
+           cols      (vec (for [r vals
+                                g vals
+                                b vals]
+                            [r g b]))
+           col-count (count cols)
+           cols      (map cols (concat [0 (dec col-count)] (furthest-away 1 (dec col-count))))
+           cols      (remove visited cols)]
+       (lazy-cat cols (fun (se/union visited (set cols)) (inc level)))))
+   #{}
+   0))
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
