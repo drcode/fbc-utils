@@ -1,5 +1,5 @@
 (ns fbc-utils.test
-  #?(:clj  (:require [clojure.test] [clojure.string :as st])
+  #?(:clj  (:require [clojure.test] [clojure.string :as st] [fbc-utils.debug :as db])
      :cljs (:require [cljs.test :include-macros true]))
   (:refer-clojure :exclude [test]))
 
@@ -48,22 +48,6 @@
                            (rest start))
                          body) nil))))
 
-;; (defmacro test-file [& body]
-;;   (let [start (seq (drop-while (fn [k]
-;;                                  (not= k 'start))
-;;                                body))]
-;;     `(deftest ~'tests
-;;        (spit "test_output.edn" "loading...")
-;;        (let [err# (atom nil)]
-;;          (do (spit "test_output.edn" (with-out-str (try ~(test-helper (or (when start
-;;                                                                             (rest start))
-;;                                                                           body) nil)
-;;                                                         (catch Exception e#
-;;                                                           (reset! err# e#)
-;;                                                           nil))))
-;;              (when @err#
-;;                (throw @err#)))))))
-
 (def abort-id "sadiiiiiew53")
 
 (def was-aborted (atom nil))
@@ -79,12 +63,15 @@
     `(deftest ~'tests
        (spit "test_output.edn" "loading...")
        (reset! was-aborted false)
+       (db/reset-debug-indent)
        (let [err# (atom nil)
              s#    (with-out-str (try ~(test-helper (or (when start
                                                           (rest start))
                                                         body)
                                                     nil)
                                       (catch Exception e#
+                                        (reset! err# e#))
+                                      (catch Error e#
                                         (reset! err# e#))))]
          (spit "test_output.edn"
                (if @was-aborted

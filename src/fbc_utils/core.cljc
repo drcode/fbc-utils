@@ -186,6 +186,21 @@
     (mod (inc index) length)
     (mod (+ index length -1) length)))
 
+(defn looped-range [length index direction];returns the looped indexes as a range
+  (iterate (fn [index]
+             (looped-increment length index direction))
+           index))
+
+;;(take 10 (looped-range 10 3 true))
+
+(defmacro take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
+  (if (> (count args) 2)
+    `(let [[a# b#] (split-with ~(first args) ~(last args))]
+       (concat a# (take-in-order ~@(butlast (rest args)) b#)))
+    `(take-while ~@args)))
+
+;;(take-in-order odd? even? odd? [1 7 6 4 3 9 9 8])
+
 (defn sqr-dist [[x1 y1] [x2 y2]]
   (+ (square (- x1 x2)) (square (- y1 y2))))
 
@@ -217,6 +232,15 @@
         index
         (recur more (inc index))))))
 
+(defn find-index [pred coll]
+  "Returns index of first match of pred in coll"
+  (loop [coll  coll
+         index 0]
+    (when-let [[item & more] (seq coll)]
+      (if (pred item)
+        index
+        (recur more (inc index))))))
+
 (defn find-first [coll pred]
   (when-let [[k] (seq (filter pred coll))]
     k))
@@ -230,10 +254,8 @@
   #?(:cljs (.charCodeAt c 0)
      :clj  (int c)))
 
-(defn throw [s]
-  (throw (ex-info (if (keyword? s)
-                    (name s)
-                    s)
+(defn throw [& args]
+  (throw (ex-info (apply str args)
                   {})))
 
 (defmacro catch-to-debug [& body]
@@ -320,6 +342,11 @@
   (when (not= start end)
     (let [mid (bit-shift-right (+ start end) 1)]
       (cons mid (interleave-all (furthest-away start mid) (furthest-away (inc mid) end))))))
+
+(defn standarddev [a] 
+  (sqrt (/ (apply + (map square (map - a (repeat (apply avg a))))) (dec (count a)))))
+
+;;(standarddev [1 2 4])
 
 ;;(take 10 (furthest-away 1 1000))
 

@@ -18,10 +18,26 @@
 (defmacro let-dbg [vars & body]
   "prints out the value of all declarations of a let"
   `(let ~(vec (mapcat (fn [[var val]]
-                        `(~var ~val
-                          ~'_  (dbg ~(strip-ampersand var) '~var)))
+                        `(~var (dbg ~val '~var)))
                       (partition 2 vars)))
      ~@body))
+
+(defmacro let-dbg [vars & body] ;prints out the value of all declarations of a let
+  (let [bindings   (partition 2 vars)
+        dbg-macro? (fn [[nam :as binding]]
+                     (and (coll? nam) (seq nam) (= (first nam) 'fbc-utils.debug/dbg)))]
+    (if (some dbg-macro? bindings)
+      `(let ~(vec (mapcat (fn [[nam val :as binding]]
+                            (if (dbg-macro? binding)
+                              (let [nam (second nam)]
+                                [nam val (gensym) `(fbc-utils.debug/dbg ~nam '~nam)])
+                              binding))
+                          bindings))
+         ~@body)
+      `(let ~(vec (mapcat (fn [[var val]]
+                            `(~var (dbg ~val '~var)))
+                          bindings))
+         ~@body))))
 
 (defmacro for-dbg [bindings & body]
   `(doall (for ~bindings
@@ -62,6 +78,12 @@
 (def max-raw-val-length 1000)
 
 (def ^:dynamic dbg-enabled true)
+(def active-key (atom false))
+(def ^:dynamic indent 0)
+
+(defn reset-debug-indent []
+  (reset! active-key false)
+  )
 
 (defn dbg-key [s]
   (when dbg-enabled
@@ -69,23 +91,36 @@
                      (if (> (count s) max-label-length)
                        (str (subs s 0 (- max-label-length 3)) "...")
                        s))]
+           (when @active-key
+             (println))
+           (dotimes [_ indent]
+             (print " | "))
            #?(:clj (if (keyword? s)
                      (println "###" s "###")
-                     (println key "="))
+                     (do (reset! active-key true)
+                         (print key)))
               :cljs (let [k (exists? js/window)]
                       (if k
                         (if (keyword? s)
                           (.log js/console (str "### " s " ###"))
-                          (.log js/console (str key "=")))
+                          (.log js/console (str key "= ")))
                         (if (keyword? s)
                           (println "###" s "###")
-                          (println key "="))))))))
+                          (do (reset! active-key true)
+                              (print key "= ")))))))))
   val)
 
 ;; Simple debug function useful for getting intermediates in -> piping.
 (defn dbg-val [val]
   (when dbg-enabled
     (try (let [result (pr-str val)]
+           (if @active-key
+             (print " = ")
+             (dotimes [n# indent]
+               (if (= n# (dec indent))
+                 (print " └-")
+                 (print " | "))))
+           
            #?(:clj (if (> (count result) max-raw-val-length)
                      (pprint val)
                      (println result))
@@ -93,13 +128,16 @@
                       (if k
                         (.log js/console val)
                         (println result)))))))
+  (reset! active-key false)
   val)
 
 (defmacro dbg [exp s]
   `(do (let [s# ~s]
          (dbg-key s#)
          (when-not (keyword? s#)
-           (dbg-val ~exp s#)))))
+           (binding [indent (inc indent)]
+             (do
+               (dbg-val ~exp)))))))
 
 (defmacro dbg-switch [condition & body]
   `(binding [dbg-enabled (and dbg-enabled ~condition)]
