@@ -3,6 +3,7 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.math.combinatorics :as cb]            
             [clojure.set :as se]
+            [clojail.core]
             #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.edn :as ed])
             #?(:clj [clojure.java.shell :as sh])
@@ -66,7 +67,7 @@
 
 (defn round [n]
   #?(:cljs (int (js/Math.round n))
-     :clj  (int (Math/round (float n)))))
+     :clj  (int (Math/round (double n)))))
 
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
@@ -193,13 +194,24 @@
 
 ;;(take 10 (looped-range 10 3 true))
 
-(defmacro take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
-  (if (> (count args) 2)
-    `(let [[a# b#] (split-with ~(first args) ~(last args))]
-       (concat a# (take-in-order ~@(butlast (rest args)) b#)))
-    `(take-while ~@args)))
+(defn split-with-count [pred coll];like "split-with" but adds a count argument to the predicate
+  (loop [acc  []
+         coll coll
+         n    0]
+    (if-let [[cur & more] (seq coll)]
+      (if (pred cur n)
+        (recur (conj acc cur) more (inc n))
+        [acc coll])
+      [acc nil])))
 
-;;(take-in-order odd? even? odd? [1 7 6 4 3 9 9 8])
+;;(split-with-count <= [0 1 2 3 5 5 6 7])
+
+(defmacro take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
+  (when (> (count args) 1)
+    `(let [[a# b#] (split-with-count ~(first args) ~(last args))]
+       (concat a# (take-in-order ~@(butlast (rest args)) b#)))))
+
+;;(take-in-order (fn [k n] (odd? k)) (fn [k n] (even? k)) (fn [k n] (odd? k)) [1 7 6 4 3 9 9 8])
 
 (defn sqr-dist [[x1 y1] [x2 y2]]
   (+ (square (- x1 x2)) (square (- y1 y2))))
@@ -255,8 +267,16 @@
      :clj  (int c)))
 
 (defn throw [& args]
-  (throw (ex-info (apply str args)
+  (throw (ex-info (if (seq args)
+                    (apply str args)
+                    "UNNAMED ERROR")
                   {})))
+
+(defn maplist [fun coll]
+  (lazy-seq (when (seq coll)
+              (cons (fun coll) (maplist fun (rest coll))))))
+
+;;(maplist #(apply + %) [1 2 3 4 5])
 
 (defmacro catch-to-debug [& body]
   `(try ~@body
@@ -364,13 +384,41 @@
    #{}
    0))
 
+(defn print-in-columns-helper [& strs]
+  (let [split-strs (map clojure.string/split-lines strs)
+        rows-num   (apply max (map count split-strs)) 
+        col-widths (for [s split-strs]
+                     (apply max (map count s)))
+        split-strs (for [col split-strs]
+                     (take rows-num (concat col (repeat ""))))]
+    (doall (apply map
+                  (fn [& str-row]
+                    (doall (map (fn [s wid]
+                                  (print (apply str (take (inc wid) (concat s (repeat " "))))))
+                                str-row
+                                col-widths))
+                    (println))
+                  split-strs))))
+
+(defmacro print-in-columns [& args]
+  `(print-in-columns-helper ~@(for [arg args]
+                                `(with-out-str ~arg))))
+
+;;(print-in-columns (dotimes [n 12] (println n)) (dotimes [n 15] (println "foo")))
+
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
               (clojure.core/slurp file))
             (defn get-tick-count []
               (System/currentTimeMillis))
             (defn exists [nam]
-              (.exists (io/file nam)))))
+              (.exists (io/file nam)))
+            (defmacro with-timeout [time & body]
+              `(let [out# *out*]
+                 (clojail.core/thunk-timeout (fn []
+                                               (binding [*out* out#]
+                                                 ~@body))
+                                             ~time)))))
 
 #?(:cljs (do (defn get-tick-count []
                (js/performance.now))

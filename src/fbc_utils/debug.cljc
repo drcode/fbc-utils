@@ -15,13 +15,6 @@
     (vec (remove #{'&} coll))
     coll))
 
-(defmacro let-dbg [vars & body]
-  "prints out the value of all declarations of a let"
-  `(let ~(vec (mapcat (fn [[var val]]
-                        `(~var (dbg ~val '~var)))
-                      (partition 2 vars)))
-     ~@body))
-
 (defmacro let-dbg [vars & body] ;prints out the value of all declarations of a let
   (let [bindings   (partition 2 vars)
         dbg-macro? (fn [[nam :as binding]]
