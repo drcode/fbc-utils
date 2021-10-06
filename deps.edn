@@ -1,4 +1,5 @@
 {:paths   ["src" "resources"]
  :deps    {org.clojure/clojurescript      {:mvn/version "1.9.946"}
+           clojail                        {:mvn/version "1.0.6"}
            org.clojure/math.combinatorics {:mvn/version "0.1.6"}
            snek                           {:git/url "https://github.com/drcode/snek" :sha "d2c461017cfe93cbc27cf4e903e383320c05b2b0"}}}

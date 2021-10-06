@@ -73,9 +73,11 @@
 (def ^:dynamic dbg-enabled true)
 (def active-key (atom false))
 (def ^:dynamic indent 0)
+(def debug-indexes (atom {}))
 
 (defn reset-debug-indent []
   (reset! active-key false)
+  (reset! debug-indexes {})
   )
 
 (defn dbg-key [s]
@@ -147,6 +149,42 @@
             (when-not dbg-enabled
               (println "Error in disabled debug switch"))
             (throw e#)))))
+
+(defmacro dbg-switch-throw [condition & body] ;like dbg-switch, but throws afterwards
+  `(binding [dbg-enabled (and dbg-enabled ~condition)]
+     (let [k# (try ~@body
+                   (catch Exception e#
+                     (when-not dbg-enabled
+                       (println "Error in disabled debug switch"))
+                     (throw e#)))]
+       (if dbg-enabled
+         (ut/throw "done with debug section")
+         k#))))
+
+(defmacro dbg-switch-on-error [& body] ;runs the code without debugging, but if an error happens reruns with debugging
+  `(binding [dbg-enabled false]
+     (try ~@body
+          (catch Exception e#
+            (binding [dbg-enabled true]
+              (try ~@body
+                   (catch Exception e#
+                     (throw e#))))))))
+
+(defmacro dbg-switch-index [target-index & body]
+  `(let [target-index#  ~target-index
+         id#            '~(gensym)
+         debug-indexes# (swap! debug-indexes 
+                               (fn [debug-indexes#]
+                                 (if dbg-enabled
+                                   (update debug-indexes#
+                                           id#
+                                           (fn [index#]
+                                             (if index#
+                                               (inc index#)
+                                               0)))
+                                   debug-indexes#)))]
+     (dbg-switch (= (debug-indexes# id#) target-index#)
+                 ~@body)))
 
 (defmacro !! [& body]
   `(do ~@(butlast body)))

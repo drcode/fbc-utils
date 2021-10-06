@@ -187,7 +187,7 @@
     (mod (inc index) length)
     (mod (+ index length -1) length)))
 
-(defn looped-range [length index direction];returns the looped indexes as a range
+(defn looped-range [length index direction];returns the looped indexes as an infinite list
   (iterate (fn [index]
              (looped-increment length index direction))
            index))
@@ -206,10 +206,10 @@
 
 ;;(split-with-count <= [0 1 2 3 5 5 6 7])
 
-(defmacro take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
+(defn take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
   (when (> (count args) 1)
-    `(let [[a# b#] (split-with-count ~(first args) ~(last args))]
-       (concat a# (take-in-order ~@(butlast (rest args)) b#)))))
+    (let [[a b] (split-with-count (first args) (last args))]
+      (concat a (apply take-in-order (conj (vec (butlast (rest args))) b))))))
 
 ;;(take-in-order (fn [k n] (odd? k)) (fn [k n] (even? k)) (fn [k n] (odd? k)) [1 7 6 4 3 9 9 8])
 
@@ -229,10 +229,13 @@
 (defn key-max [db]
   (apply max (keys db)))
 
+(defn next-key [db]
+  (if (seq db)
+    (inc (key-max db))
+    0))
+
 (defn push-with-id [db obj]
-  (let [id (if (seq db)
-             (inc (key-max db))
-             0)]
+  (let [id (next-key db)]
     (assoc db id (assoc obj :id id))))
 
 (defn index-of [coll val]
@@ -253,7 +256,7 @@
         index
         (recur more (inc index))))))
 
-(defn find-first [coll pred]
+(defn find-first [pred coll]
   (when-let [[k] (seq (filter pred coll))]
     k))
 
@@ -405,6 +408,26 @@
                                 `(with-out-str ~arg))))
 
 ;;(print-in-columns (dotimes [n 12] (println n)) (dotimes [n 15] (println "foo")))
+
+(defn nested-indexes [coll depth]
+  (if (pos? depth)
+    (mapcat (fn [[index item]]
+              (map cons (repeat index) (nested-indexes item (dec depth))))
+            (map-indexed vector coll))
+    [[]]))
+
+;;(nested-indexes [[:a :b] [:c] [:d :e]] 2)
+
+(defn not-too-deep ;throws error if more than "num" sequence items are consumed
+  ([coll num]
+   (lazy-seq (when (seq coll)
+               (if (zero? num)
+                 (throw (ex-info "sequence consumption too deep" {}))
+                 (cons (first coll) (not-too-deep (rest coll) (dec num))))))) 
+  ([coll]
+   (not-too-deep coll 1000)))
+
+;;(not-too-deep (range 10000))
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
