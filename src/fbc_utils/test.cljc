@@ -1,5 +1,8 @@
 (ns fbc-utils.test
-  #?(:clj  (:require [clojure.test] [clojure.string :as st] [fbc-utils.debug :as db])
+  #?(:clj  (:require [clojure.test]
+                     [clojure.string :as st]
+                     [fbc-utils.debug :as db]
+                     [portal.api :as po])
      :cljs (:require [cljs.test :include-macros true]))
   (:refer-clojure :exclude [test]))
 
@@ -80,10 +83,33 @@
          (when @err#
            (throw @err#))))))
 
+(def portal (atom nil))
+
+(defmacro test-portal [& body]
+  (if-let [portal @portal]
+    (po/clear)
+    (reset! portal (po/open)))
+  (let [start (seq (drop-while (fn [k]
+                                 (not= k 'start))
+                               body))]
+    `(deftest ~'tests
+       (reset! was-aborted false)
+       (db/reset-debug-indent)
+       (let [err# (atom nil)
+             s#   (do (reset! db/dbg-function po/submit)
+                      (try ~(test-helper (or (when start
+                                               (rest start))
+                                             body)
+                                         nil)
+                           (catch Exception e#
+                             (reset! err# e#))
+                           (catch Error e#
+                             (reset! err# e#)) 
+                           (finally (reset! db/dbg-function nil))))]
+         (when @err#
+           (throw @err#))))))
+
 (defmacro error-name [& body]
   `(try ~@body
         (catch Exception e#
           (str e#))))
-
-
-

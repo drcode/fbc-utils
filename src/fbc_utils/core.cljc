@@ -3,6 +3,8 @@
   (:require [clojure.spec.alpha :as s]
             [clojure.math.combinatorics :as cb]            
             [clojure.set :as se]
+            [clojure.string :as st]
+            [clojure.pprint :as pp]
             [clojail.core]
             #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.edn :as ed])
@@ -264,6 +266,10 @@
   "Same as [(filter pred coll) (remove pred coll)]"
   [(filter pred coll) (remove pred coll)])
 
+(defn partition-eager [n coll]
+  (lazy-seq (when (seq coll)
+              (cons (take n coll) (partition-eager n (drop n coll))))))
+
 (defn ord [c]
   "converts char to ascii code"
   #?(:cljs (.charCodeAt c 0)
@@ -429,6 +435,13 @@
 
 ;;(not-too-deep (range 10000))
 
+(defn or-fun [a b]
+  (or a b))
+
+(defn spit-edn [fname edn]
+  (str edn)
+  (spit fname (with-out-str (pp/pprint edn))))
+
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
               (clojure.core/slurp file))
@@ -441,7 +454,14 @@
                  (clojail.core/thunk-timeout (fn []
                                                (binding [*out* out#]
                                                  ~@body))
-                                             ~time)))))
+                                             ~time)))
+            (defn log-slurp [fname]
+              (if (exists fname)
+                (map read-string (st/split (slurp fname) #"\n"))
+                []))
+
+            (defn log-append [fname item]
+              (spit fname (str (pr-str item) "\n") :append true))))
 
 #?(:cljs (do (defn get-tick-count []
                (js/performance.now))

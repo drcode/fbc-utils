@@ -52,6 +52,8 @@
 
 (defmacro defn-dbg [nam args & body]
   `(defn ~nam ~args
+     (dbg-key '~nam true "#")
+     (reset! active-key false)
      ~@(map (fn [arg]
               `(dbg ~arg '~arg))
             args)
@@ -80,55 +82,64 @@
   (reset! debug-indexes {})
   )
 
-(defn dbg-key [s]
+(def dbg-function (atom nil))
+
+(defn dbg-key [s singleton? decoration]
   (when dbg-enabled
-    (try (let [key (let [s (pr-str s)]
-                     (if (> (count s) max-label-length)
-                       (str (subs s 0 (- max-label-length 3)) "...")
-                       s))]
-           (when @active-key
-             (println))
-           (dotimes [_ indent]
-             (print " | "))
-           #?(:clj (if (keyword? s)
-                     (println "###" s "###")
-                     (do (reset! active-key true)
-                         (print key)))
-              :cljs (let [k (exists? js/window)]
-                      (if k
-                        (if (keyword? s)
-                          (.log js/console (str "### " s " ###"))
-                          (.log js/console (str key "= ")))
-                        (if (keyword? s)
-                          (println "###" s "###")
-                          (do (reset! active-key true)
-                              (print key "= ")))))))))
+    (if @dbg-function
+      (try (let [key (let [s (pr-str s)]
+                       (if (> (count s) max-label-length)
+                         (str (subs s 0 (- max-label-length 3)) "...")
+                         s))]
+             (@dbg-function key)))
+      (try (let [key (let [s (pr-str s)]
+                       (if (> (count s) max-label-length)
+                         (str (subs s 0 (- max-label-length 3)) "...")
+                         s))]
+             (when @active-key
+               (println))
+             (dotimes [_ indent]
+               (print " | "))
+             #?(:clj (if singleton?
+                       (println decoration s decoration)
+                       (do (reset! active-key true)
+                           (print key)))
+                :cljs (let [k (exists? js/window)]
+                        (if k
+                          (if singleton?
+                            (.log js/console (str decoration " " s " " decoration))
+                            (.log js/console (str key "= ")))
+                          (if singleton?
+                            (println decoration s decoration)
+                            (do (reset! active-key true)
+                                (print key "= "))))))))))
   val)
 
 ;; Simple debug function useful for getting intermediates in -> piping.
 (defn dbg-val [val]
   (when dbg-enabled
-    (try (let [result (pr-str val)]
-           (if @active-key
-             (print " = ")
-             (dotimes [n# indent]
-               (if (= n# (dec indent))
-                 (print " └-")
-                 (print " | "))))
-           
-           #?(:clj (if (> (count result) max-raw-val-length)
-                     (pprint val)
-                     (println result))
-              :cljs (let [k (exists? js/window)]
-                      (if k
-                        (.log js/console val)
-                        (println result)))))))
+    (if @dbg-function
+      (try (@dbg-function val))
+      (try (let [result (pr-str val)]
+             (if @active-key
+               (print " = ")
+               (dotimes [n# indent]
+                 (if (= n# (dec indent))
+                   (print " └-")
+                   (print " | "))))
+             #?(:clj (if (> (count result) max-raw-val-length)
+                       (pprint val)
+                       (println result))
+                :cljs (let [k (exists? js/window)]
+                        (if k
+                          (.log js/console val)
+                          (println result))))))))
   (reset! active-key false)
   val)
 
 (defmacro dbg [exp s]
   `(do (let [s# ~s]
-         (dbg-key s#)
+         (dbg-key s# (keyword? s#) "###")
          (when-not (keyword? s#)
            (binding [indent (inc indent)]
              (do
