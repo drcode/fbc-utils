@@ -2,6 +2,12 @@
   #?(:cljs (:require [cljs.reader :refer [read-string]])
      :clj  (:require [clojure.pprint :refer [pprint]])))
 
+#?(:clj (defn get-tick-count []
+          (System/currentTimeMillis))
+   :cljs (defn get-tick-count []
+           (js/performance.now)))
+
+
 (defmacro loop-dbg [vars & body]
   "prints out the value of all parameters into the loop for debugging purposes."
   `(loop ~vars
@@ -144,6 +150,21 @@
            (binding [indent (inc indent)]
              (do
                (dbg-val ~exp)))))))
+
+(defn dbg-big [s exp]
+  (print s "=")
+  (println (subs (pr-str exp) 0 1000)))
+
+(let [tick (atom 0)]
+  (defn dbg-rate-limited [s exp]
+    (swap! tick
+           (fn [tick]
+             (let [n (get-tick-count)]
+               (if (> (- n tick) 500)
+                 (do (print s "=")
+                     (println exp)
+                     n)
+                 tick))))))
 
 (defmacro dbg-switch [condition & body]
   `(binding [dbg-enabled (and dbg-enabled ~condition)]

@@ -5,7 +5,7 @@
             [clojure.set :as se]
             [clojure.string :as st]
             [clojure.pprint :as pp]
-            [clojail.core]
+            #?(:clj [clojail.core])
             #?(:clj [clojure.java.io :as io])
             #?(:clj [clojure.edn :as ed])
             #?(:clj [clojure.java.shell :as sh])
@@ -136,6 +136,10 @@
        (-> x#
            ~@statements))))
 
+(defmacro let-> [val var & body]
+  `(let [~var ~val]
+     ~@body))
+
 (defn extract-opts [args]
   (if (and (seq args) (map? (first args)))
     [(first args) (rest args)]
@@ -163,6 +167,9 @@
    (and (<= a b) (< b c)))
   ([a b]
    (<= a b)))
+
+(defn trues [coll]
+  (filter identity coll))
 
 (defn bracket
   "the return value is bracketed between min-val and max-val, closed on both sides"
@@ -441,6 +448,24 @@
 (defn spit-edn [fname edn]
   (str edn)
   (spit fname (with-out-str (pp/pprint edn))))
+
+(declare get-tick-count)
+
+(let [last-time (atom 0)]
+  (defn time-gated-println [s]
+    (let [n (get-tick-count)]
+      (swap! last-time
+             (fn [last-time]
+               (cond-> last-time
+                 (> (- n last-time) 200) (do (println s) n)))))))
+
+(defn group-while [pred coll] ;breaks coll sequentially into pairs of coll, where the first in pair is true and the second of pair is false
+  (lazy-seq (when (seq coll)
+              (let [[a more] (split-with pred coll)
+                    [b more] (split-with (complement pred) more)]
+                (cons [a b] (group-while pred more))))))
+
+#_(group-while even? [4 6 3 4 3 3 3 4])
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
