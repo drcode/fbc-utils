@@ -87,6 +87,11 @@
   ([sizes]
    (multivec sizes nil)))
 
+(defn sane-number [n]
+  (if (= (float (int n)) n)
+    (int n)
+    (float n)))
+
 (defn cartesians [& args]
   (map vec (apply cb/cartesian-product (map range args))))
 
@@ -215,6 +220,11 @@
 
 ;;(split-with-count <= [0 1 2 3 5 5 6 7])
 
+(defn removev [coll index]
+  (vec (concat (subvec coll 0 index) (subvec coll (inc index)))))
+
+;;(removev [1 2 3 4 5] 2)
+
 (defn take-in-order [& args];like "take-while" but accepts multiple predicates, which will be fullfilled in order
   (when (> (count args) 1)
     (let [[a b] (split-with-count (first args) (last args))]
@@ -228,6 +238,11 @@
 (defn rem-exclamation [kw]
   "Removes a postfixed exclamation mark from a keyword- Useful for situations where ':foo!' is used as a shorthand for 'set :foo'"
   (keyword (namespace kw) (apply str (butlast (name kw)))))
+
+(defn namespacify [namespace obj]
+  (into {}
+        (for [[k v] obj]
+          [(keyword (name namespace) (name k)) v])))
 
 (defn keyed-by-id [coll]
   "Takes a collection of items with a :id key, and returns the collection as a map against those keys."
@@ -446,7 +461,6 @@
   (or a b))
 
 (defn spit-edn [fname edn]
-  (str edn)
   (spit fname (with-out-str (pp/pprint edn))))
 
 (declare get-tick-count)
@@ -466,6 +480,9 @@
                 (cons [a b] (group-while pred more))))))
 
 #_(group-while even? [4 6 3 4 3 3 3 4])
+
+(defn previous-consecutive-cycle [coll]
+  (map concat (reductions conj () (cycle (reverse coll))) (repeat (cycle coll))))
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]

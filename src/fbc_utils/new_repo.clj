@@ -13,7 +13,7 @@
       (when (ut/exists dir)
         (ut/throw (str "Directory " dir " already exists.")))
       (sh/! (str "mkdir " dir))
-      (println (sh/! (str "cd " dir ";git init;touch README.mdo;git add .;git commit -a -m \"wip\";git remote add origin git@github.com:" user-name "/" nam ".git;git push -u origin master"))))))
+      (println (sh/! (str "cd " dir ";git init;touch README.md;git add .;git commit -a -m \"wip\";git remote add origin git@github.com:" user-name "/" nam ".git;git push -u origin master"))))))
 
 (new-repo (first *command-line-args*))
 (shutdown-agents)
