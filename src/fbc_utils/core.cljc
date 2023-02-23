@@ -71,6 +71,15 @@
   #?(:cljs (int (js/Math.round n))
      :clj  (int (Math/round (double n)))))
 
+(defn int->hex [n]
+  (let [hex-chars "0123456789ABCDEF"]
+    (str "0x"
+         (loop [n       n
+                hex-str ""]
+           (if (zero? n)
+             hex-str
+             (recur (quot n 16) (str (nth hex-chars (mod n 16)) hex-str)))))))
+
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
 
@@ -483,6 +492,10 @@
 
 (defn previous-consecutive-cycle [coll]
   (map concat (reductions conj () (cycle (reverse coll))) (repeat (cycle coll))))
+
+(defn eat [val] ;val is really big, show first 100 chars of print, plus total num of character
+  (let [s (with-out-str (pp/pprint val))]
+    (str (apply str (take 100 s)) "...(" (count s) " chars)")))
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]
