@@ -146,7 +146,8 @@
 (defmacro dbg [exp s]
   `(do (let [s# ~s]
          (dbg-key s# (keyword? s#) "###")
-         (when-not (keyword? s#)
+         (if (keyword? s#)
+           s#
            (binding [indent (inc indent)]
              (do
                (dbg-val ~exp)))))))

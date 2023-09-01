@@ -58,6 +58,12 @@
 (def max-int #?(:clj Integer/MAX_VALUE
                 :cljs js/Number.MAX_SAFE_INTEGER))
 
+#_(defmacro <!timeout [c tim]
+    `(let [k#        ~c
+           [val# c#] (clojure.core.async/alts! [k# (clojure.core.async/timeout ~tim)])]
+       (when (= c# k#)
+         val#)))
+
 (defn sign [n]
   (cond (zero? n) 0
         (pos? n) 1
@@ -82,6 +88,10 @@
 
 (defn interpolate [v1 v2 frac]
   (+ v1 (* (- v2 v1) frac)))
+
+(defmacro unwrap [var & body]
+  `(let [~var (deref ~var)]
+     ~@body))
 
 (defn flip-map [coll]
   (into {}
@@ -301,6 +311,21 @@
   (lazy-seq (when (seq coll)
               (cons (take n coll) (partition-eager n (drop n coll))))))
 
+(defn partition-slop [min-size coll] ;;takes any remaining items after the partition and disperses it among the existing partitions
+  (let [coll-size           (count coll)
+        num-partitions      (max 1 (Math/ceil (/ coll-size min-size)))
+        base-partition-size (quot coll-size num-partitions)
+        slop                (rem coll-size num-partitions)
+        take-n              (fn [i]
+                              (+ base-partition-size
+                                 (if (< i slop) 1 0)))]
+    (first (reduce (fn [acc block]
+                     (let [n (take-n block)
+                           new-items (split-at n (second acc))]
+                       [(conj (first acc) (first new-items)) (second new-items)]))
+                   [[] coll]
+                   (range num-partitions)))))
+
 (defn ord [c]
   "converts char to ascii code"
   #?(:cljs (.charCodeAt c 0)
@@ -410,6 +435,15 @@
 
 ;;(take 10 (furthest-away 1 1000))
 
+(defn distinct-by [f coll]
+  (letfn [(step [xs seen]
+            (lazy-seq (when-let [[x & more] (seq xs)]
+                        (let [k (f x)]
+                          (if (seen k)
+                            (step more seen)
+                            (cons x (step more (conj seen k))))))))]
+    (step coll #{})))
+
 (def distinguishable-colors
   ((fn fun [visited level]
      (let [vals      (conj (vec (range 0 256 (bit-shift-right 256 level))) 255)
@@ -496,6 +530,22 @@
 (defn eat [val] ;val is really big, show first 100 chars of print, plus total num of character
   (let [s (with-out-str (pp/pprint val))]
     (str (apply str (take 100 s)) "...(" (count s) " chars)")))
+
+(defn matches [regex s]
+  (when-let [k (re-matches regex s)]
+    (rest k)))
+
+;;(matches #"Ask Task (.*): (.*)" "Ask Task #1: Foo bar")
+
+(defn match [regex s]
+  (when-let [k (re-matches regex s)]
+    (second k)))
+
+;;(match #"Ask Task (.*)" "Ask Task #1")
+
+(defn serialize [fname val] ;passes through the value but also serializez it as edn
+  (spit fname (with-out-str (pp/pprint val)))
+  val)
 
 #?(:clj (do (def read-string ed/read-string)
             (defmacro static-slurp [file]

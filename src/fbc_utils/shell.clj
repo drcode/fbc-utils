@@ -11,9 +11,13 @@
           s
           shell-definitions))
 
-(defn ! [s]
-  (let [s                                 (apply-shell-defs s)
-        {:keys [out exit err] :as result} (sh/sh "bash" "-c" s)]
-    (when-not (zero? exit)
-      (ut/throw (str "exit failed: " err)))
-    out))
+(defn !
+  ([s ignore-exit-code]
+   (let [s                                 (apply-shell-defs s)
+         {:keys [out exit err] :as result} (sh/sh "bash" "-c" s)]
+     (when-not (or ignore-exit-code (zero? exit))
+       (ut/throw (str "exit failed: " err)))
+     out))
+  ([s]
+   (! s false)))
+
